@@ -1,4 +1,4 @@
-import { Users, Activity, Target, TrendingUp, MapPin, Clock, Award, Zap, Camera, Shield, Play, BarChart3 } from 'lucide-react';
+import { Users, Activity, Target, TrendingUp, MapPin, Clock, Award, Zap, Camera, Shield, Play, BarChart3, CheckCircle2, FileText } from 'lucide-react';
 import { Card } from './ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Badge } from './ui/badge';
@@ -31,6 +31,7 @@ interface AnalysisData {
     rueckraum: { attempts: number; goals: number };
     kreis: { attempts: number; goals: number };
     aussenLinks: { attempts: number; goals: number };
+    aussenRechts: { attempts: number; goals: number };
   };
   playerStats: Array<{
     id: number;
@@ -50,6 +51,12 @@ interface AnalysisData {
     zone: string;
     intensity: number;
   }>;
+  qualityMetrics: {
+    playerDetectionRate: number;
+    teamClassificationAccuracy: number;
+    formationAccuracy: number;
+    fieldDetectionConfidence: number;
+  };
 }
 
 interface AnalysisResultsProps {
@@ -219,8 +226,12 @@ export function AnalysisResults({ data, videoName }: AnalysisResultsProps) {
 
       {/* Detailed Analysis Tabs */}
       <motion.div variants={itemVariants}>
-        <Tabs defaultValue="formations" className="w-full">
-          <TabsList className="grid w-full grid-cols-5 bg-gradient-to-r from-blue-100 to-orange-100 p-1 rounded-xl">
+        <Tabs defaultValue="quality" className="w-full">
+          <TabsList className="grid w-full grid-cols-6 bg-gradient-to-r from-blue-100 to-orange-100 p-1 rounded-xl">
+            <TabsTrigger value="quality" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md">
+              <CheckCircle2 className="w-4 h-4 mr-2" />
+              Qualität
+            </TabsTrigger>
             <TabsTrigger value="formations" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md">
               <Shield className="w-4 h-4 mr-2" />
               Abwehr
@@ -242,6 +253,242 @@ export function AnalysisResults({ data, videoName }: AnalysisResultsProps) {
               Heatmap
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="quality" className="mt-6">
+            <Card className="shadow-xl border-2 border-green-200">
+              <div className="p-8">
+                <h3 className="text-2xl font-bold mb-2 flex items-center gap-2">
+                  <CheckCircle2 className="w-6 h-6 text-green-600" />
+                  Qualitätsmetriken (Abnahmekriterien)
+                </h3>
+                <p className="text-gray-600 mb-6">Erfüllung der definierten Mindestanforderungen gemäß Abnahmekatalog</p>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* 3.1 Spielererkennung */}
+                  <motion.div
+                    className="p-6 rounded-xl border-2 bg-gradient-to-br from-green-50 to-white"
+                    style={{
+                      borderColor: data.qualityMetrics.playerDetectionRate >= 80 ? 'rgb(34 197 94)' : 'rgb(239 68 68)'
+                    }}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.1 }}
+                  >
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <h4 className="font-bold text-lg mb-1">Spielererkennung</h4>
+                        <p className="text-sm text-gray-600">Anforderung 3.1: ≥ 80%</p>
+                      </div>
+                      {data.qualityMetrics.playerDetectionRate >= 80 ? (
+                        <CheckCircle2 className="w-8 h-8 text-green-600" />
+                      ) : (
+                        <div className="w-8 h-8 text-red-600 font-bold text-2xl">⚠</div>
+                      )}
+                    </div>
+                    <div className="mb-3">
+                      <div className="flex justify-between mb-1">
+                        <span className="text-sm font-medium">Erkennungsrate:</span>
+                        <span className="font-bold">{data.qualityMetrics.playerDetectionRate}%</span>
+                      </div>
+                      <div className="h-4 bg-gray-200 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all"
+                          style={{
+                            width: `${data.qualityMetrics.playerDetectionRate}%`,
+                            background: data.qualityMetrics.playerDetectionRate >= 80
+                              ? 'linear-gradient(to right, rgb(34 197 94), rgb(22 163 74))'
+                              : 'linear-gradient(to right, rgb(239 68 68), rgb(220 38 38))'
+                          }}
+                        ></div>
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-600 mt-2">
+                      Anteil der erkannten Spieler mit stabiler Bounding-Box über die gesamte Sequenz
+                    </p>
+                    <Badge className={data.qualityMetrics.playerDetectionRate >= 80 ? 'bg-green-600 mt-3' : 'bg-red-600 mt-3'}>
+                      {data.qualityMetrics.playerDetectionRate >= 80 ? '✓ Erfüllt' : '✗ Nicht erfüllt'}
+                    </Badge>
+                  </motion.div>
+
+                  {/* 3.2 Teameinteilung */}
+                  <motion.div
+                    className="p-6 rounded-xl border-2 bg-gradient-to-br from-blue-50 to-white"
+                    style={{
+                      borderColor: data.qualityMetrics.teamClassificationAccuracy >= 85 ? 'rgb(34 197 94)' : 'rgb(239 68 68)'
+                    }}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.2 }}
+                  >
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <h4 className="font-bold text-lg mb-1">Teameinteilung</h4>
+                        <p className="text-sm text-gray-600">Anforderung 3.2: ≥ 85%</p>
+                      </div>
+                      {data.qualityMetrics.teamClassificationAccuracy >= 85 ? (
+                        <CheckCircle2 className="w-8 h-8 text-green-600" />
+                      ) : (
+                        <div className="w-8 h-8 text-red-600 font-bold text-2xl">⚠</div>
+                      )}
+                    </div>
+                    <div className="mb-3">
+                      <div className="flex justify-between mb-1">
+                        <span className="text-sm font-medium">Klassifizierungsgenauigkeit:</span>
+                        <span className="font-bold">{data.qualityMetrics.teamClassificationAccuracy}%</span>
+                      </div>
+                      <div className="h-4 bg-gray-200 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all"
+                          style={{
+                            width: `${data.qualityMetrics.teamClassificationAccuracy}%`,
+                            background: data.qualityMetrics.teamClassificationAccuracy >= 85
+                              ? 'linear-gradient(to right, rgb(34 197 94), rgb(22 163 74))'
+                              : 'linear-gradient(to right, rgb(239 68 68), rgb(220 38 38))'
+                          }}
+                        ></div>
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-600 mt-2">
+                      K-Means Clustering Genauigkeit bei der automatischen Teamzuordnung anhand Trikotfarben
+                    </p>
+                    <Badge className={data.qualityMetrics.teamClassificationAccuracy >= 85 ? 'bg-green-600 mt-3' : 'bg-red-600 mt-3'}>
+                      {data.qualityMetrics.teamClassificationAccuracy >= 85 ? '✓ Erfüllt' : '✗ Nicht erfüllt'}
+                    </Badge>
+                  </motion.div>
+
+                  {/* 3.3 Formationsklassifizierung */}
+                  <motion.div
+                    className="p-6 rounded-xl border-2 bg-gradient-to-br from-sky-50 to-white"
+                    style={{
+                      borderColor: data.qualityMetrics.formationAccuracy >= 75 ? 'rgb(34 197 94)' : 'rgb(239 68 68)'
+                    }}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.3 }}
+                  >
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <h4 className="font-bold text-lg mb-1">Formationsklassifizierung</h4>
+                        <p className="text-sm text-gray-600">Anforderung 3.3: ≥ 75%</p>
+                      </div>
+                      {data.qualityMetrics.formationAccuracy >= 75 ? (
+                        <CheckCircle2 className="w-8 h-8 text-green-600" />
+                      ) : (
+                        <div className="w-8 h-8 text-red-600 font-bold text-2xl">⚠</div>
+                      )}
+                    </div>
+                    <div className="mb-3">
+                      <div className="flex justify-between mb-1">
+                        <span className="text-sm font-medium">Trefferquote:</span>
+                        <span className="font-bold">{data.qualityMetrics.formationAccuracy}%</span>
+                      </div>
+                      <div className="h-4 bg-gray-200 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all"
+                          style={{
+                            width: `${data.qualityMetrics.formationAccuracy}%`,
+                            background: data.qualityMetrics.formationAccuracy >= 75
+                              ? 'linear-gradient(to right, rgb(34 197 94), rgb(22 163 74))'
+                              : 'linear-gradient(to right, rgb(239 68 68), rgb(220 38 38))'
+                          }}
+                        ></div>
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-600 mt-2">
+                      Genauigkeit bei der Erkennung von Abwehrformationen (6:0, 5:1, 3:2:1) in statischen Phasen
+                    </p>
+                    <Badge className={data.qualityMetrics.formationAccuracy >= 75 ? 'bg-green-600 mt-3' : 'bg-red-600 mt-3'}>
+                      {data.qualityMetrics.formationAccuracy >= 75 ? '✓ Erfüllt' : '✗ Nicht erfüllt'}
+                    </Badge>
+                  </motion.div>
+
+                  {/* Spielfeld-Erkennung (Bonus) */}
+                  <motion.div
+                    className="p-6 rounded-xl border-2 border-orange-200 bg-gradient-to-br from-orange-50 to-white"
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.4 }}
+                  >
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <h4 className="font-bold text-lg mb-1">Spielfeld-Erkennung</h4>
+                        <p className="text-sm text-gray-600">Zusätzliche Metrik (Anforderung 2.1)</p>
+                      </div>
+                      <CheckCircle2 className="w-8 h-8 text-green-600" />
+                    </div>
+                    <div className="mb-3">
+                      <div className="flex justify-between mb-1">
+                        <span className="text-sm font-medium">Erkennungskonf idenz:</span>
+                        <span className="font-bold">{data.qualityMetrics.fieldDetectionConfidence}%</span>
+                      </div>
+                      <div className="h-4 bg-gray-200 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-orange-500 to-orange-600 rounded-full"
+                          style={{ width: `${data.qualityMetrics.fieldDetectionConfidence}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-600 mt-2">
+                      Konfidenz der automatischen Spielfeld-Erkennung zur Kontextualisierung der Spielerdaten
+                    </p>
+                    <Badge className="bg-orange-600 mt-3">
+                      ✓ Erfolgreich
+                    </Badge>
+                  </motion.div>
+                </div>
+
+                {/* Gesamtstatus */}
+                <motion.div
+                  className="mt-8 p-6 rounded-xl border-2 bg-gradient-to-r from-green-50 to-blue-50"
+                  style={{
+                    borderColor: data.qualityMetrics.playerDetectionRate >= 80 &&
+                                 data.qualityMetrics.teamClassificationAccuracy >= 85 &&
+                                 data.qualityMetrics.formationAccuracy >= 75
+                      ? 'rgb(34 197 94)'
+                      : 'rgb(234 179 8)'
+                  }}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.6 }}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-xl font-bold mb-2">Gesamtbewertung</h4>
+                      <p className="text-gray-600">
+                        {data.qualityMetrics.playerDetectionRate >= 80 &&
+                         data.qualityMetrics.teamClassificationAccuracy >= 85 &&
+                         data.qualityMetrics.formationAccuracy >= 75
+                          ? 'Alle Mindestanforderungen aus dem Abnahmekatalog erfüllt'
+                          : 'Einige Anforderungen unterschreiten die Mindestwerte'}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-4xl font-bold text-green-600 mb-1">
+                        {data.qualityMetrics.playerDetectionRate >= 80 &&
+                         data.qualityMetrics.teamClassificationAccuracy >= 85 &&
+                         data.qualityMetrics.formationAccuracy >= 75
+                          ? '✓'
+                          : '⚠'}
+                      </div>
+                      <Badge className={
+                        data.qualityMetrics.playerDetectionRate >= 80 &&
+                        data.qualityMetrics.teamClassificationAccuracy >= 85 &&
+                        data.qualityMetrics.formationAccuracy >= 75
+                          ? 'bg-green-600'
+                          : 'bg-yellow-600'
+                      }>
+                        {data.qualityMetrics.playerDetectionRate >= 80 &&
+                         data.qualityMetrics.teamClassificationAccuracy >= 85 &&
+                         data.qualityMetrics.formationAccuracy >= 75
+                          ? 'Abnahmebereit'
+                          : 'Verbesserung empfohlen'}
+                      </Badge>
+                    </div>
+                  </div>
+                </motion.div>
+              </div>
+            </Card>
+          </TabsContent>
 
           <TabsContent value="formations" className="mt-6">
             <Card className="shadow-xl border-2 border-sky-200">
@@ -385,6 +632,26 @@ export function AnalysisResults({ data, videoName }: AnalysisResultsProps) {
                         <span className="text-gray-600">Quote:</span>
                         <Badge className="bg-green-600">
                           {((data.shotPositions.aussenLinks.goals / data.shotPositions.aussenLinks.attempts) * 100).toFixed(0)}%
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-6 rounded-xl border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-white">
+                    <h4 className="text-lg font-bold mb-4 text-blue-700">Außen Rechts</h4>
+                    <div className="space-y-3">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Versuche:</span>
+                        <span className="font-bold">{data.shotPositions.aussenRechts.attempts}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Tore:</span>
+                        <span className="font-bold text-green-600">{data.shotPositions.aussenRechts.goals}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Quote:</span>
+                        <Badge className="bg-green-600">
+                          {((data.shotPositions.aussenRechts.goals / data.shotPositions.aussenRechts.attempts) * 100).toFixed(0)}%
                         </Badge>
                       </div>
                     </div>

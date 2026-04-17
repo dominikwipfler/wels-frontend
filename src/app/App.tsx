@@ -2,12 +2,13 @@ import { useState, useEffect } from 'react';
 import { VideoUpload } from './components/VideoUpload';
 import { ProcessingStatus } from './components/ProcessingStatus';
 import { AnalysisResults } from './components/AnalysisResults';
+import { Dashboard } from './components/Dashboard';
 import { Button } from './components/ui/button';
 import { ArrowLeft, Video, Sparkles } from 'lucide-react';
 import { motion } from 'motion/react';
 import logoImg from '../imports/Logo.png';
 
-type AppState = 'upload' | 'processing' | 'results';
+type AppState = 'dashboard' | 'upload' | 'processing' | 'results';
 
 interface AnalysisData {
   duration: number;
@@ -36,6 +37,7 @@ interface AnalysisData {
     rueckraum: { attempts: number; goals: number };
     kreis: { attempts: number; goals: number };
     aussenLinks: { attempts: number; goals: number };
+    aussenRechts: { attempts: number; goals: number };
   };
   playerStats: Array<{
     id: number;
@@ -55,6 +57,12 @@ interface AnalysisData {
     zone: string;
     intensity: number;
   }>;
+  qualityMetrics: {
+    playerDetectionRate: number; // Anforderung 3.1: ≥80%
+    teamClassificationAccuracy: number; // Anforderung 3.2: ≥85%
+    formationAccuracy: number; // Anforderung 3.3: ≥75%
+    fieldDetectionConfidence: number; // Spielfeld-Erkennung
+  };
 }
 
 const processingSteps = [
@@ -99,6 +107,7 @@ function generateMockAnalysis(): AnalysisData {
       rueckraum: { attempts: 26, goals: 18 },
       kreis: { attempts: 12, goals: 8 },
       aussenLinks: { attempts: 4, goals: 2 },
+      aussenRechts: { attempts: 4, goals: 2 },
     },
     playerStats: [
       { id: 7, name: 'Spieler #7', shots: 12, goals: 8, assists: 3, distance: 2847, team: 'A' },
@@ -125,15 +134,22 @@ function generateMockAnalysis(): AnalysisData {
       { zone: 'Rechts außen', intensity: 51 },
       { zone: 'Kreis', intensity: 94 },
     ],
+    qualityMetrics: {
+      playerDetectionRate: 82, // Anforderung 3.1: ≥80%
+      teamClassificationAccuracy: 87, // Anforderung 3.2: ≥85%
+      formationAccuracy: 76, // Anforderung 3.3: ≥75%
+      fieldDetectionConfidence: 90, // Spielfeld-Erkennung
+    },
   };
 }
 
 function App() {
-  const [state, setState] = useState<AppState>('upload');
+  const [state, setState] = useState<AppState>('dashboard');
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [progress, setProgress] = useState(0);
   const [currentStep, setCurrentStep] = useState('');
   const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
+  const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
 
   // Handle video upload and automatically start processing
   const handleVideoUpload = (file: File) => {
@@ -174,11 +190,23 @@ function App() {
   }, [state]);
 
   const handleReset = () => {
-    setState('upload');
+    setState('dashboard');
     setVideoFile(null);
     setProgress(0);
     setCurrentStep('');
     setAnalysisData(null);
+    setSelectedMatchId(null);
+  };
+
+  const handleNewUpload = () => {
+    setState('upload');
+  };
+
+  const handleViewMatch = (matchId: string, data: AnalysisData, fileName: string) => {
+    setSelectedMatchId(matchId);
+    setAnalysisData(data);
+    setVideoFile(new File([], fileName));
+    setState('results');
   };
 
   return (
@@ -191,34 +219,78 @@ function App() {
       </div>
 
       <div className="relative max-w-7xl mx-auto px-4 py-8">
-        {/* Header */}
-        <motion.div 
-          className="mb-8"
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-        >
-          <div className="flex items-center gap-6 mb-3">
-            <motion.img 
-              src={logoImg} 
-              alt="SportsVision Logo" 
-              className="h-20"
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-            />
-          </div>
-        </motion.div>
-
         {/* Main Content */}
+        {state === 'dashboard' && (
+          <Dashboard onNewUpload={handleNewUpload} onViewMatch={handleViewMatch} />
+        )}
+
         {state === 'upload' && (
-          <div className="max-w-3xl mx-auto">
-            <VideoUpload onVideoUpload={handleVideoUpload} />
+          <div className="min-h-screen flex flex-col items-center justify-center -mt-8">
+            {/* Back Button */}
+            <div className="w-full max-w-2xl mb-4">
+              <Button
+                variant="outline"
+                onClick={handleReset}
+                className="shadow-md hover:shadow-lg transition-all"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Zurück zum Dashboard
+              </Button>
+            </div>
+
+            {/* Hero Section */}
+            <motion.div
+              className="text-center mb-12"
+              initial={{ opacity: 0, y: -30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8 }}
+            >
+              <motion.img
+                src={logoImg}
+                alt="SportsVision Logo"
+                className="h-24 mx-auto mb-8"
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+              />
+
+              <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-blue-900 via-sky-600 to-orange-500 bg-clip-text text-transparent">
+                Handball Video Analytics
+              </h1>
+
+              <p className="text-xl text-gray-600 max-w-2xl mx-auto mb-4">
+                Automatisierte KI-gestützte Analyse von Handballspielen mit Computer Vision Technologie
+              </p>
+
+              <p className="text-lg text-gray-500 max-w-xl mx-auto">
+                Laden Sie Ihr Video hoch und erhalten Sie detaillierte Einblicke zu Spielzügen, Formationen und Spielerstatistiken
+              </p>
+            </motion.div>
+
+            {/* Upload Section */}
+            <motion.div
+              className="w-full max-w-2xl"
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.4 }}
+            >
+              <VideoUpload onVideoUpload={handleVideoUpload} />
+            </motion.div>
+
+            {/* Technology Note */}
+            <motion.div
+              className="text-center mt-8 text-sm text-gray-500 max-w-xl"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.8, delay: 0.6 }}
+            >
+              <p>Powered by OpenCV, K-Means Clustering & Deep Learning</p>
+            </motion.div>
           </div>
         )}
 
         {state === 'processing' && videoFile && (
-          <div className="max-w-3xl mx-auto">
+          <div className="max-w-3xl mx-auto mt-20">
             <ProcessingStatus
               fileName={videoFile.name}
               progress={Math.round(progress)}
@@ -234,7 +306,7 @@ function App() {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5 }}
           >
-            <div className="mb-6">
+            <div className="mb-6 mt-8">
               <Button 
                 variant="outline" 
                 onClick={handleReset}
